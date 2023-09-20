@@ -1,0 +1,84 @@
+version: '3'
+
+services:
+  mongodb1:
+    image: mongo:latest
+    container_name: mongodb1
+    hostname: mongodb1
+    restart: always
+    environment:
+      - MONGODB_DATABASE=servifacil
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    volumes:
+      - ./mongo/data1:/data/db
+    expose:
+      - 27017
+    ports:
+      - 27017:27017
+    entrypoint: [ "mongod", "--bind_ip_all", "--replSet", "servifacil-mongo-set" ]
+    healthcheck:
+      test: >
+        mongosh --eval "rs.reconfig(rs.conf()); rs.status().ok" || mongosh --eval "rs.initiate({_id:'servifacil-mongo-set',members:[{_id:0,host:'mongodb1:27017', priority:1},{_id:1,host:'mongodb2:27017', priority:0.5},{_id:2,host:'mongodb3:27017', priority:0.5}]}).ok"
+      interval: 10s
+      start_period: 30s
+    networks:
+      - monedero-nestjs
+
+  mongodb2:
+    image: mongo:latest
+    container_name: mongodb2
+    hostname: mongodb2
+    restart: always
+    environment:
+      - MONGODB_DATABASE=servifacil
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    volumes:
+      - ./mongo/data2:/data/db
+    expose:
+      - 27017
+    ports:
+      - 27018:27017
+    entrypoint: [ "mongod", "--bind_ip_all", "--replSet", "servifacil-mongo-set" ]
+    networks:
+      - monedero-nestjs
+
+  mongodb3:
+    image: mongo:latest
+    container_name: mongodb3
+    hostname: mongodb3
+    restart: always
+    environment:
+      - MONGODB_DATABASE=servifacil
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    volumes:
+      - ./mongo/data3:/data/db
+    expose:
+      - 27017
+    ports:
+      - 27019:27017
+    entrypoint: [ "mongod", "--bind_ip_all", "--replSet", "servifacil-mongo-set" ]
+    networks:
+      - monedero-nestjs
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rmq
+    expose:
+      - 5672
+      - 15672
+    ports:
+      - 15672:15672
+      - 5672:5672
+    restart: always
+    networks:
+      - monedero-nestjs
+
+volumes:
+  mongodb:
+
+networks:
+  monedero-nestjs:
+    driver: bridge
