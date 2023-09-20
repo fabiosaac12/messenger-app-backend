@@ -1,8 +1,21 @@
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { AuthModule } from './auth.module';
+import { Transport } from '@nestjs/microservices';
+import { Queues } from '@app/common/enums';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AuthModule);
-  await app.listen(3000);
+  const app = await NestFactory.createMicroservice(AppModule, {
+    transport: Transport.RMQ,
+    options: {
+      urls: [process.env.AMQP_URL],
+      queue: `${Queues.auth}_${process.env.ENVIRONMENT}`,
+    },
+  });
+
+  await app.listen();
+
+  Logger.log('Auth microservice is running');
 }
+
 bootstrap();
