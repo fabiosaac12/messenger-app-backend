@@ -7,7 +7,7 @@ import {
 import { RpcException } from '@nestjs/microservices';
 import { MongoDataService } from '../../services/data-services/mongo-data-service';
 import { LoginEntry, RegisterEntry } from '../../entities';
-import { encrypt } from '@app/common/helpers';
+import { comparePassword, encrypt } from '@app/common/helpers';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class AuthUseCases {
         entry.username,
       );
 
-      if (!user) {
+      if (!user || !(await comparePassword(entry.password, user.password))) {
         throw new HttpException('failed_login', HttpStatus.UNAUTHORIZED);
       }
 
