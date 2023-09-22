@@ -52,8 +52,6 @@ export class AuthUseCases {
   }
 
   private handleDBExceptions(error: any): never {
-    console.log(error);
-
     if (
       error instanceof HttpException ||
       (typeof error?.status === 'number' && error?.message)
