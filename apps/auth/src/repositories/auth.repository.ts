@@ -6,7 +6,7 @@ import { RegisterEntry } from '../entities';
 export class AuthRepository {
   constructor(private readonly userModel: Model<UserModel>) {}
 
-  async register(entry: RegisterEntry) {
+  async createUser(entry: RegisterEntry) {
     try {
       const newUser = await new this.userModel({
         ...entry,
@@ -14,13 +14,17 @@ export class AuthRepository {
 
       return newUser;
     } catch (error) {
-      console.log(error);
-
       if (error.code === 11000)
         throw new HttpException(
           `duplicated_user_${Object.keys(error.keyValue)[0]}`,
           HttpStatus.CONFLICT,
         );
     }
+  }
+
+  async getUserByUsername(username: string) {
+    const user = await this.userModel.findOne({ username });
+
+    return user;
   }
 }

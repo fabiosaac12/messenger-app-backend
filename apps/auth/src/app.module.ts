@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DataServicesModule } from './services';
 import { AuthUseCasesModule } from './use-cases';
-import { AuthController } from './controllers/auth.controller';
-import { ConfigModule } from '@nestjs/config';
+import { AuthController } from './controllers';
 
 @Module({
   imports: [

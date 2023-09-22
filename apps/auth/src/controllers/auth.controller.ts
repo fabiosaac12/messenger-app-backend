@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthMessages } from '@app/common/enums';
-import { RegisterEntry } from '../entities';
+import { LoginEntry, RegisterEntry } from '../entities';
 import { AuthUseCases } from '../use-cases';
 
 @Controller()
@@ -10,6 +10,11 @@ export class AuthController {
 
   @MessagePattern(AuthMessages.register)
   register(@Payload() { entry }: { entry: RegisterEntry }) {
-    return this.authUseCases.create(entry);
+    return this.authUseCases.register(entry);
+  }
+
+  @MessagePattern(AuthMessages.login)
+  login(@Payload() { entry }: { entry: LoginEntry }) {
+    return this.authUseCases.login(entry);
   }
 }
