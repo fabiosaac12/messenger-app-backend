@@ -3,8 +3,8 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SetClientProxy } from '@app/common/proxy';
 import { AuthMessages } from '@app/common/enums';
 import { Auth, GetUser } from '@app/common/decorators';
-import { RegisterDto, LoginDto } from './dtos/auth';
 import { RequestUser } from '@app/common/models';
+import { RegisterDto, LoginDto } from './dtos/auth';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -29,10 +29,12 @@ export class AuthController {
     });
   }
 
-  @Get('profile')
+  @Get('refresh')
   @Auth()
-  @ApiOperation({ summary: 'Profile' })
+  @ApiOperation({ summary: 'Refresh session' })
   profile(@GetUser() user: RequestUser) {
-    return user;
+    return this.authClientProxy.send(AuthMessages.refresh, {
+      user,
+    });
   }
 }

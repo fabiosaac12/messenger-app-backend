@@ -1,12 +1,12 @@
 import { Model } from 'mongoose';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { UserModel } from '@app/common/schemas';
-import { RegisterEntry } from '../entities';
+import { RegisterDto } from '../entities';
 
 export class AuthRepository {
   constructor(private readonly userModel: Model<UserModel>) {}
 
-  async createUser(entry: RegisterEntry) {
+  async createUser(entry: RegisterDto['entry']) {
     try {
       const newUser = await new this.userModel({
         ...entry,
@@ -26,6 +26,21 @@ export class AuthRepository {
     const user = await this.userModel.findOne(
       { username },
       { _id: 1, username: 1, email: 1, lastAccess: 1, password: 1 },
+    );
+
+    return user;
+  }
+
+  async updateUserLastAccess(id: string) {
+    const user = await this.userModel.findByIdAndUpdate(
+      id,
+      {
+        lastAccess: new Date().getTime(),
+      },
+      {
+        new: true,
+        projection: { _id: 1, username: 1, email: 1, lastAccess: 1 },
+      },
     );
 
     return user;

@@ -6,21 +6,18 @@ import {
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { comparePassword, encrypt } from '@app/common/helpers';
-import { EnvironmentVariables } from '@app/common/models/EnvironmentVariables';
 import { MongoDataService } from '../../services/data-services/mongo-data-service';
-import { LoginEntry, RegisterEntry } from '../../entities';
+import { LoginDto, RefreshDto, RegisterDto } from '../../entities';
 
 @Injectable()
 export class AuthUseCases {
   constructor(
-    private configService: ConfigService<EnvironmentVariables>,
     private dataServices: MongoDataService,
     private jwtService: JwtService,
   ) {}
 
-  async register(entry: RegisterEntry) {
+  async register(entry: RegisterDto['entry']) {
     try {
       const newUser = await this.dataServices.auth.createUser({
         ...entry,
@@ -33,7 +30,7 @@ export class AuthUseCases {
     }
   }
 
-  async login(entry: LoginEntry) {
+  async login(entry: LoginDto['entry']) {
     try {
       const _user = await this.dataServices.auth.getUserByUsername(
         entry.username,
@@ -47,9 +44,22 @@ export class AuthUseCases {
 
       return {
         user,
-        token: await this.jwtService.signAsync(user, {
-          expiresIn: this.configService.get('JWT_EXPIRES_IN'),
-        }),
+        token: await this.jwtService.signAsync(user),
+      };
+    } catch (error) {
+      this.handleDBExceptions(error);
+    }
+  }
+
+  async refresh(user: RefreshDto['user']) {
+    try {
+      const updatedUser = await this.dataServices.auth.updateUserLastAccess(
+        user._id,
+      );
+
+      return {
+        user: updatedUser,
+        token: await this.jwtService.signAsync(updatedUser.toObject()),
       };
     } catch (error) {
       this.handleDBExceptions(error);
