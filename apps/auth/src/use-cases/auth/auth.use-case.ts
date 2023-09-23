@@ -32,17 +32,21 @@ export class AuthUseCases {
 
   async login(entry: LoginEntry) {
     try {
-      const user = await this.dataServices.auth.getUserByUsername(
+      const _user = await this.dataServices.auth.getUserByUsername(
         entry.username,
       );
 
-      if (!user || !(await comparePassword(entry.password, user.password))) {
+      const { password, ...user } = _user.toObject();
+
+      if (!user || !(await comparePassword(entry.password, password))) {
         throw new HttpException('failed_login', HttpStatus.UNAUTHORIZED);
       }
 
+      console.log(user);
+
       return {
         user,
-        token: await this.jwtService.signAsync(user.toObject(), {
+        token: await this.jwtService.signAsync(user, {
           expiresIn: process.env.JWT_EXPIRES_IN,
         }),
       };

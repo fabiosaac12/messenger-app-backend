@@ -1,8 +1,10 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SetClientProxy } from '@app/common/proxy';
 import { AuthMessages } from '@app/common/enums';
+import { Auth, GetUser } from '@app/common/decorators';
 import { RegisterDto, LoginDto } from './dtos/auth';
+import { RequestUser } from '@app/common/models';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -25,5 +27,12 @@ export class AuthController {
     return this.authClientProxy.send(AuthMessages.login, {
       entry,
     });
+  }
+
+  @Get('profile')
+  @Auth()
+  @ApiOperation({ summary: 'Profile' })
+  profile(@GetUser() user: RequestUser) {
+    return user;
   }
 }

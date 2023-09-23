@@ -1,7 +1,7 @@
 import { Model } from 'mongoose';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { UserModel } from '@app/common/models';
+import { UserModel } from '@app/common/schemas';
 import { AuthRepository } from '../../../repositories';
 
 @Injectable()

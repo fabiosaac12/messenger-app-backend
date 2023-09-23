@@ -1,10 +1,19 @@
-import { Module } from '@nestjs/common';
 import { ProxyModule } from '@app/common/proxy';
-import { AuthController } from './auth';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthController } from './auth';
 
 @Module({
-  imports: [ConfigModule.forRoot(), ProxyModule],
+  imports: [
+    JwtModule.register({
+      global: true,
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '60s' },
+    }),
+    ConfigModule.forRoot(),
+    ProxyModule,
+  ],
   controllers: [AuthController],
   providers: [],
 })

@@ -1,6 +1,6 @@
 import { Model } from 'mongoose';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { UserModel } from '@app/common/models';
+import { UserModel } from '@app/common/schemas';
 import { RegisterEntry } from '../entities';
 
 export class AuthRepository {
@@ -23,7 +23,10 @@ export class AuthRepository {
   }
 
   async getUserByUsername(username: string) {
-    const user = await this.userModel.findOne({ username });
+    const user = await this.userModel.findOne(
+      { username },
+      { _id: 1, username: 1, email: 1, lastAccess: 1, password: 1 },
+    );
 
     return user;
   }
