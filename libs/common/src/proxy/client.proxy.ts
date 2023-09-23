@@ -6,17 +6,20 @@ import {
   Transport,
 } from '@nestjs/microservices';
 import { Queues } from '@app/common/enums';
+import { EnvironmentVariables } from '../models/EnvironmentVariables';
 
 @Injectable()
 export class SetClientProxy {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService<EnvironmentVariables>,
+  ) {}
 
   auth(): ClientProxy {
     return ClientProxyFactory.create({
       transport: Transport.RMQ,
       options: {
-        urls: this.config.get('AMQP_URL'),
-        queue: `${Queues.auth}_${process.env.ENVIRONMENT}`,
+        urls: this.configService.get('AMQP_URI'),
+        queue: `${Queues.auth}_${this.configService.get('ENVIRONMENT')}`,
       },
     });
   }

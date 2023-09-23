@@ -45,7 +45,7 @@ async function bootstrap() {
 
   Logger.log(`API Gateway running on port ${process.env.PORT}`);
   Logger.debug(
-    `Open documentation: ${process.env.DOMAIN}/${process.env.ENVIRONMENT}/api/docs`,
+    `Open documentation: ${process.env.BASE_URL}/${process.env.ENVIRONMENT}/api/docs`,
   );
 }
 

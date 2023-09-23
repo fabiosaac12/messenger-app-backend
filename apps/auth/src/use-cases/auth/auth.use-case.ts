@@ -5,14 +5,17 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { comparePassword, encrypt } from '@app/common/helpers';
+import { EnvironmentVariables } from '@app/common/models/EnvironmentVariables';
 import { MongoDataService } from '../../services/data-services/mongo-data-service';
 import { LoginEntry, RegisterEntry } from '../../entities';
-import { comparePassword, encrypt } from '@app/common/helpers';
-import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthUseCases {
   constructor(
+    private configService: ConfigService<EnvironmentVariables>,
     private dataServices: MongoDataService,
     private jwtService: JwtService,
   ) {}
@@ -42,12 +45,10 @@ export class AuthUseCases {
         throw new HttpException('failed_login', HttpStatus.UNAUTHORIZED);
       }
 
-      console.log(user);
-
       return {
         user,
         token: await this.jwtService.signAsync(user, {
-          expiresIn: process.env.JWT_EXPIRES_IN,
+          expiresIn: this.configService.get('JWT_EXPIRES_IN'),
         }),
       };
     } catch (error) {
