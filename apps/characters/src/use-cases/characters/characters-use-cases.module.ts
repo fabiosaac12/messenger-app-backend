@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { AuthUseCases } from './auth.use-cases';
+import { CharactersUseCases } from './characters.use-cases';
 import { DataServicesModule } from '../../services';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -16,7 +16,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
     }),
   ],
-  providers: [AuthUseCases],
-  exports: [AuthUseCases],
+  providers: [CharactersUseCases],
+  exports: [CharactersUseCases],
 })
-export class AuthUseCasesModule {}
+export class CharactersUseCasesModule {}

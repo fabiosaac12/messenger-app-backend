@@ -6,7 +6,7 @@ import {
   Transport,
 } from '@nestjs/microservices';
 import { Queues } from '@app/common/enums';
-import { EnvironmentVariables } from '../models/EnvironmentVariables';
+import { EnvironmentVariables } from '../models';
 
 @Injectable()
 export class SetClientProxy {
@@ -20,6 +20,16 @@ export class SetClientProxy {
       options: {
         urls: this.configService.get('AMQP_URI'),
         queue: `${Queues.auth}_${this.configService.get('ENVIRONMENT')}`,
+      },
+    });
+  }
+
+  characters(): ClientProxy {
+    return ClientProxyFactory.create({
+      transport: Transport.RMQ,
+      options: {
+        urls: this.configService.get('AMQP_URI'),
+        queue: `${Queues.characters}_${this.configService.get('ENVIRONMENT')}`,
       },
     });
   }

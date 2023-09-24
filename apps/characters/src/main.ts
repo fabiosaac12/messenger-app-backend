@@ -9,13 +9,13 @@ async function bootstrap() {
     transport: Transport.RMQ,
     options: {
       urls: [process.env.AMQP_URI],
-      queue: `${Queues.auth}_${process.env.ENVIRONMENT}`,
+      queue: `${Queues.characters}_${process.env.ENVIRONMENT}`,
     },
   });
 
   await app.listen();
 
-  Logger.debug('Auth microservice is running');
+  Logger.debug('Characters microservice is running');
 }
 
 bootstrap();

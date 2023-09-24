@@ -4,8 +4,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { EnvironmentVariablesValidationSchema } from '@app/common/validations';
 import { EnvironmentVariables } from '@app/common/models';
 import { DataServicesModule } from './services';
-import { AuthUseCasesModule } from './use-cases';
-import { AuthController } from './controllers';
+import { CharactersUseCasesModule } from './use-cases';
+import { CharactersController } from './controllers';
 
 @Module({
   imports: [
@@ -22,9 +22,9 @@ import { AuthController } from './controllers';
       }),
     }),
     DataServicesModule,
-    AuthUseCasesModule,
+    CharactersUseCasesModule,
   ],
-  controllers: [AuthController],
+  controllers: [CharactersController],
   providers: [],
 })
 export class AppModule {}

@@ -2,13 +2,16 @@ import { ProxyModule } from '@app/common/proxy';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { EnvValidationSchema } from '@app/common/validations/env.validation';
+import { EnvironmentVariables } from '@app/common/models';
+import { EnvironmentVariablesValidationSchema } from '@app/common/validations';
 import { AuthController } from './auth';
-import { EnvironmentVariables } from '@app/common/models/EnvironmentVariables';
+import { CharactersController } from './characters';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ validationSchema: EnvValidationSchema }),
+    ConfigModule.forRoot({
+      validationSchema: EnvironmentVariablesValidationSchema,
+    }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -19,7 +22,7 @@ import { EnvironmentVariables } from '@app/common/models/EnvironmentVariables';
     }),
     ProxyModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, CharactersController],
   providers: [],
 })
 export class AppModule {}
