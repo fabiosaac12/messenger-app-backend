@@ -1,0 +1,22 @@
+# Dependencies and build output are produced inside the image
+node_modules
+dist
+
+# VCS
+.git
+.gitignore
+
+# Local dev Mongo data (root-owned, must never reach the build context)
+mongo/
+
+# Secrets / local env files (includes .env.template on purpose)
+.env*
+
+# Misc
+coverage
+*.log
+.vscode
+.idea
+.github
+deploy
+README.md
