@@ -1,0 +1,134 @@
+version: '3.8'
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:4.3.6-management
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  api-gateway:
+    image: messenger-backend/api-gateway:${IMAGE_TAG}
+    build:
+      context: ..
+      args:
+        APP: api-gateway
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: /opt/messenger/backend/.env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/production/api/docs-json',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      backend:
+        aliases:
+          - api-gateway
+      messenger_edge:
+        aliases:
+          - api-gateway
+
+  auth:
+    image: messenger-backend/auth:${IMAGE_TAG}
+    build:
+      context: ..
+      args:
+        APP: auth
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: /opt/messenger/backend/.env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  characters:
+    image: messenger-backend/characters:${IMAGE_TAG}
+    build:
+      context: ..
+      args:
+        APP: characters
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: /opt/messenger/backend/.env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN}
+    networks:
+      - messenger_edge
+
+networks:
+  backend:
+    driver: bridge
+  messenger_edge:
+    external: true
+
+volumes:
+  mongo_data:
+  rabbitmq_data:
+  caddy_data:
+  caddy_config:

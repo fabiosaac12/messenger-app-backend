@@ -1,0 +1,19 @@
+{$APP_DOMAIN::80} {
+	encode zstd gzip
+
+	handle /production/api/* {
+		reverse_proxy api-gateway:3000
+	}
+
+	handle /socket.io/* {
+		reverse_proxy socket:4000
+	}
+
+	handle /assistant/* {
+		reverse_proxy socket:4000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
