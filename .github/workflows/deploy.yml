@@ -1,0 +1,153 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build apps
+        run: yarn build:all
+
+      - name: Lint
+        continue-on-error: true
+        run: npx eslint "{apps,libs}/**/*.ts"
+
+      - name: Test
+        run: yarn test --passWithNoTests
+
+  deploy:
+    name: Deploy to Production
+    needs: ci
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, linux, messenger-backend]
+    environment: production
+    concurrency:
+      group: deploy-backend-production
+      cancel-in-progress: false
+    timeout-minutes: 30
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment file
+        run: |
+          umask 077
+          printf "MONGO_ROOT_USER=%s\nMONGO_ROOT_PASSWORD=%s\nRABBITMQ_USER=%s\nRABBITMQ_PASSWORD=%s\nMONGODB_URI=mongodb://%s:%s@mongo:27017/messenger?authSource=admin\nMONGODB_DIRECT_CONNECTION=true\nAMQP_URI=amqp://%s:%s@rabbitmq:5672/\nENVIRONMENT=production\nPORT=3000\nBASE_URL=https://%s\nJWT_SECRET=%s\nJWT_EXPIRES_IN=%s\nBCRYPT_SALT=%s\nAPP_DOMAIN=%s\n" \
+            "${{ secrets.MONGO_ROOT_USER }}" \
+            "${{ secrets.MONGO_ROOT_PASSWORD }}" \
+            "${{ secrets.RABBITMQ_USER }}" \
+            "${{ secrets.RABBITMQ_PASSWORD }}" \
+            "${{ secrets.MONGO_ROOT_USER }}" \
+            "${{ secrets.MONGO_ROOT_PASSWORD }}" \
+            "${{ secrets.RABBITMQ_USER }}" \
+            "${{ secrets.RABBITMQ_PASSWORD }}" \
+            "${{ vars.APP_DOMAIN }}" \
+            "${{ secrets.JWT_SECRET }}" \
+            "${{ vars.JWT_EXPIRES_IN }}" \
+            "${{ vars.BCRYPT_SALT }}" \
+            "${{ vars.APP_DOMAIN }}" > /opt/messenger/backend/.env
+
+      - name: Set IMAGE_TAG
+        run: echo "IMAGE_TAG=${GITHUB_SHA::12}" >> $GITHUB_ENV
+
+      - name: Build and Start
+        run: |
+          export PREV_TAG=$(cat /opt/messenger/backend/current_tag 2>/dev/null || echo "")
+          echo "PREV_TAG=$PREV_TAG" >> $GITHUB_ENV
+          
+          docker compose -p messenger-backend -f deploy/docker-compose.prod.yml build
+          docker compose -p messenger-backend -f deploy/docker-compose.prod.yml up -d --remove-orphans --wait --wait-timeout 180
+
+      - name: Reload Caddy Configuration
+        run: |
+          docker compose -p messenger-backend -f deploy/docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+
+      - name: Smoke Tests
+        id: smoke
+        run: |
+          echo "Testing API Gateway responding with 401..."
+          if ! timeout 60 bash -c '
+            while true; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: ${{ vars.APP_DOMAIN }}" http://127.0.0.1/production/api/v1/auth/refresh || echo "000")
+              if [ "$STATUS" = "401" ]; then
+                echo "Gateway is responding with 401."
+                break
+              fi
+              sleep 2
+            done
+          '; then
+            echo "Smoke test a (gateway 401) failed!"
+            exit 1
+          fi
+
+          echo "Testing RabbitMQ consumers..."
+          if ! timeout 60 bash -c '
+            while true; do
+              QUEUES=$(docker compose -p messenger-backend -f deploy/docker-compose.prod.yml exec -T rabbitmq rabbitmqctl list_queues name consumers -q || true)
+              if echo "$QUEUES" | awk "\$1 == \"auth_production\" && \$2 >= 1" | grep -q . && \
+                 echo "$QUEUES" | awk "\$1 == \"characters_production\" && \$2 >= 1" | grep -q .; then
+                echo "Queues have consumers."
+                break
+              fi
+              sleep 2
+            done
+          '; then
+            echo "Smoke test b (queues) failed!"
+            exit 1
+          fi
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          if [ -n "$PREV_TAG" ]; then
+            echo "Rolling back to tag: $PREV_TAG"
+            export IMAGE_TAG=$PREV_TAG
+            docker compose -p messenger-backend -f deploy/docker-compose.prod.yml up -d --no-build
+          else
+            echo "No previous tag found. Cannot rollback."
+          fi
+
+      - name: Record Current Tag
+        if: success()
+        run: |
+          echo "${IMAGE_TAG}" > /opt/messenger/backend/current_tag
+
+      - name: Prune Old Images
+        if: always()
+        run: |
+          # Delete any messenger-backend image that is neither IMAGE_TAG nor PREV_TAG
+          CURRENT=$(cat /opt/messenger/backend/current_tag 2>/dev/null || echo "")
+          IMAGES=$(docker images "messenger-backend/*" --format "{{.Repository}}:{{.Tag}}")
+          for IMG in $IMAGES; do
+            TAG="${IMG#*:}"
+            if [ "$TAG" != "$CURRENT" ] && [ "$TAG" != "$PREV_TAG" ] && [ "$TAG" != "latest" ]; then
+              docker rmi "$IMG" || true
+            fi
+          done
+          docker image prune -f
